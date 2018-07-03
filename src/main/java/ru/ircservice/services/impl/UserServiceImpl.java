@@ -13,8 +13,6 @@ import static ru.ircservice.utils.PasswordUtils.hashPassword;
 
 public class UserServiceImpl implements UserService {
 
-    private ReentrantLock lock = new ReentrantLock();
-
     private Map<String, User> users = new ConcurrentHashMap<>();
     private Map<User, Session> usersSessions = new ConcurrentHashMap<>();
     private Map<Session, User> sessionsWithUsers = new ConcurrentHashMap<>();
@@ -43,16 +41,9 @@ public class UserServiceImpl implements UserService {
 
             Session session;
 
-            try {
-                // todo need think about overhead costs
-                lock.lock();
-
+            synchronized (user) {
                 session = usersSessions.compute(user, (key, value) -> createSession());
                 sessionsWithUsers.put(session, user);
-
-
-            } finally {
-                lock.unlock();
             }
 
             return session;

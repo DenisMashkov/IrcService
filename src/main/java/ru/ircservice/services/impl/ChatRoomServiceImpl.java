@@ -18,9 +18,6 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         this.userService = userService;
     }
 
-    private ReentrantLock bindLock = new ReentrantLock();
-    private ReentrantLock removeLock = new ReentrantLock();
-
     private Map<String, ChatRoom> chatRooms = new ConcurrentHashMap<>();
 
     private ConcurrentHashMap<Session, ChatRoom> sessionsWithChatRoom = new ConcurrentHashMap<>();
@@ -60,8 +57,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     @Override
     public void bindSessionToRoom(Session session, ChatRoom chatRoom) {
 
-        try {
-            bindLock.lock();
+        synchronized (session) {
 
             sessionsWithChatRoom.put(session, chatRoom);
             chatRoomsSessions.compute(chatRoom, (key, value) -> {
@@ -76,9 +72,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
                     throw new RuntimeException("Chat room is full");
                 }
             });
-        } finally {
-            bindLock.unlock();
         }
+
     }
 
     @Override
@@ -86,15 +81,11 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         ChatRoom chatRoom = getChatRoom(session);
         Set<Session> sessions = getRoomSessions(chatRoom);
 
-        try {
-            // todo need think about overhead costs
-            removeLock.lock();
+        synchronized (session) {
 
             sessionsWithChatRoom.remove(session);
             sessions.remove(session);
 
-        }finally {
-            removeLock.unlock();
         }
     }
 
